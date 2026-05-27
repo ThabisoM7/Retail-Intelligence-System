@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thola RIS - Intelligence Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent 40%);
+        }
+
+        header {
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        header h1 {
+            font-weight: 800;
+            font-size: 2.5rem;
+            background: linear-gradient(to right, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 { margin-bottom: 1.5rem; font-weight: 600; }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            background: rgba(0,0,0,0.2);
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;}
+        
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), #60a5fa);
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .results {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .basket-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+        
+        .basket-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .item-details h3 { font-size: 1.2rem; margin-bottom: 0.25rem; }
+        .item-meta { font-size: 0.85rem; color: var(--text-muted); }
+        .item-vendor { color: var(--accent); font-weight: 600; }
+        
+        .item-price {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #34d399;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .card-value { font-size: 2rem; font-weight: 800; color: white; margin-top: 0.5rem; }
+
+        .loader {
+            display: none;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Thola RIS Dashboard</h1>
+        <p style="color: var(--text-muted); margin-top: 0.5rem;">Retail Intelligence System Tester</p>
+    </header>
+
+    <div class="container">
+        <!-- Input Panel -->
+        <div class="glass-panel">
+            <div class="tabs">
+                <div class="tab active" onclick="setMode('budget_optimizer')">Budget Optimizer</div>
+                <div class="tab" onclick="setMode('deal_bundles')">Deal Bundles</div>
+                <div class="tab" onclick="setMode('sme_intelligence')">SME Margin</div>
+            </div>
+
+            <h2>Request Parameters</h2>
+            
+            <div class="form-group">
+                <label>API Key (X-Thola-API-Key)</label>
+                <input type="text" id="apiKey" value="secret_dev_key">
+            </div>
+
+            <div class="form-group" id="budgetGroup">
+                <label>Budget (ZAR)</label>
+                <input type="number" id="budget" value="500.00">
+            </div>
+
+            <div class="form-group">
+                <label>Location (Pretoria Mock)</label>
+                <div style="display: flex; gap: 1rem;">
+                    <input type="number" id="lat" value="-25.746" step="0.001">
+                    <input type="number" id="lng" value="28.431" step="0.001">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Target Items/Preferences (Comma separated)</label>
+                <input type="text" id="preferences" value="staples, eggs, milk">
+            </div>
+
+            <div class="form-group">
+                <label>Premium User?</label>
+                <select id="isPremium">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+
+            <button onclick="fetchRecommendations()">Generate Intelligence</button>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="glass-panel" style="min-height: 500px;">
+            <h2>AI Recommendations</h2>
+            <div id="loader" class="loader"></div>
+            <div id="results" class="results">
+                <p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">Submit a request to view results.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'budget_optimizer';
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if(mode === 'sme_intelligence') {
+                document.getElementById('budgetGroup').style.display = 'none';
+                document.getElementById('isPremium').value = "true"; // SME must be premium
+            } else {
+                document.getElementById('budgetGroup').style.display = 'block';
+            }
+        }
+
+        async function fetchRecommendations() {
+            const resultsDiv = document.getElementById('results');
+            const loader = document.getElementById('loader');
+            
+            resultsDiv.innerHTML = '';
+            loader.style.display = 'block';
+
+            const payload = {
+                user_id: "thola_test_user",
+                request_type: currentMode,
+                is_premium: document.getElementById('isPremium').value === 'true',
+                budget: parseFloat(document.getElementById('budget').value) || 0,
+                location: {
+                    lat: parseFloat(document.getElementById('lat').value),
+                    lng: parseFloat(document.getElementById('lng').value)
+                },
+                preferences: document.getElementById('preferences').value.split(',').map(s => s.trim())
+            };
+
+            try {
+                const response = await fetch('/v1/recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Thola-API-Key': document.getElementById('apiKey').value
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                loader.style.display = 'none';
+
+                if(response.ok) {
+                    renderResults(data);
+                } else {
+                    resultsDiv.innerHTML = `<p style="color: #ef4444">Error: ${data.detail || 'Failed to fetch'}</p>`;
+                }
+            } catch(e) {
+                loader.style.display = 'none';
+                resultsDiv.innerHTML = `<p style="color: #ef4444">Connection Error. Is the backend running?</p>`;
+            }
+        }
+
+        function renderResults(data) {
+            let html = '';
+            
+            if(data.total_calculated_spend !== null) {
+                html += `
+                <div class="summary-cards">
+                    <div class="card">
+                        <div style="color: var(--text-muted)">Total Spend</div>
+                        <div class="card-value">R${data.total_calculated_spend}</div>
+                    </div>
+                    <div class="card">
+                        <div style="color: var(--text-muted)">Remaining Budget</div>
+                        <div class="card-value" style="color: ${data.remaining_budget >= 0 ? '#34d399' : '#ef4444'}">R${data.remaining_budget}</div>
+                    </div>
+                </div>`;
+            }
+
+            if(data.optimized_basket && data.optimized_basket.length > 0) {
+                html += '<h3>Optimized Basket</h3>';
+                data.optimized_basket.forEach(item => {
+                    html += `
+                    <div class="basket-item">
+                        <div class="item-details">
+                            <h3>${item.item_name}</h3>
+                            <div class="item-meta">
+                                <span class="item-vendor">${item.vendor_name}</span> &bull; ${item.deal_type}
+                            </div>
+                        </div>
+                        <div class="item-price">R${item.price_zar}</div>
+                    </div>`;
+                });
+            }
+
+            if(data.suggested_combos && data.suggested_combos.length > 0) {
+                html += '<h3>Suggested Combos (SME Intel)</h3>';
+                data.suggested_combos.forEach(combo => {
+                    html += `
+                    <div class="basket-item" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <div class="item-details">
+                                <h3>${combo.combo_name}</h3>
+                                <div class="item-meta" style="color: var(--primary)">
+                                    ${combo.included_items.join(' + ')}
+                                </div>
+                            </div>
+                            <div class="item-price">Sell at R${combo.suggested_selling_price_zar}</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; width: 100%; font-size: 0.9rem;">
+                            <strong style="color: #fbbf24">Analysis:</strong> ${combo.competitor_comparison}<br><br>
+                            <strong style="color: #34d399">Rationale:</strong> ${combo.rationale}
+                        </div>
+                    </div>`;
+                });
+            }
+
+            document.getElementById('results').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
