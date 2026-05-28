@@ -1,7 +1,11 @@
 import time
+import re
+import logging
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 from app.scrapers.base import BaseScraper
+
+logger = logging.getLogger(__name__)
 
 class KitKatScraper(BaseScraper):
     def __init__(self):
@@ -10,52 +14,72 @@ class KitKatScraper(BaseScraper):
         self.categories = ["groceries", "toiletries"]
 
     def scrape(self):
-        print(f"[{self.supplier_name}] Starting extraction via Playwright + Gemini AI...")
+        logger.info(f"[{self.supplier_name}] Starting extraction via Playwright + BeautifulSoup (Zero AI Cost)...")
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
                 page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
                 
-                # We will scrape up to 3 pages per category
                 for category in self.categories:
                     for page_num in range(1, 4):
                         url = f"{self.base_url}{category}?page={page_num}"
-                        print(f"[{self.supplier_name}] Navigating to {url}...")
+                        logger.info(f"[{self.supplier_name}] Navigating to {url}...")
                         
                         try:
                             page.goto(url, wait_until="networkidle", timeout=30000)
                             page.wait_for_timeout(2000)
                             
                             html_content = page.content()
-                            
-                            # Check if the page actually has products or if it's empty/out of bounds
                             if "No products found" in html_content or "no-products" in html_content:
-                                print(f"[{self.supplier_name}] Reached end of category {category} at page {page_num}.")
+                                logger.info(f"[{self.supplier_name}] Reached end of category {category} at page {page_num}.")
                                 break
                             
-                            # Strip out heavy scripts/styles
                             soup = BeautifulSoup(html_content, "html.parser")
-                            for tag in soup(["script", "style", "nav", "footer", "svg"]):
-                                tag.decompose()
+                            
+                            # Heuristic: Find all product container-like divs
+                            # Usually they have classes like 'product', 'item', 'card'
+                            product_containers = soup.find_all(['div', 'li'], class_=re.compile(r'(product|item|card|col-)', re.I))
+                            
+                            extracted_count = 0
+                            for container in product_containers:
+                                text_content = container.get_text(separator=" ", strip=True)
                                 
-                            clean_html = soup.get_text(separator=" ", strip=True)
-                            
-                            # Pass to Gemini
-                            ai_extracted_data = self.ai_engine.extract_products_from_html(clean_html, self.supplier_name)
-                            
-                            if ai_extracted_data:
-                                self.scraped_data.extend(ai_extracted_data)
-                                print(f"[{self.supplier_name}] Successfully extracted {len(ai_extracted_data)} items from {category} page {page_num} via AI.")
+                                # Look for a price pattern
+                                price_match = re.search(r'(?:R|ZAR)\s*(\d+(?:[.,]\d{2})?)', text_content, re.I)
+                                if not price_match:
+                                    continue
+                                    
+                                # Find an image
+                                img_tag = container.find('img')
+                                img_url = img_tag.get('src') if img_tag else None
+                                
+                                # Heuristic item name (longest text string in the container that isn't the price)
+                                strings = [s.strip() for s in container.stripped_strings if len(s.strip()) > 3]
+                                item_name = strings[0] if strings else "Unknown Product"
+                                
+                                price_val = float(price_match.group(1).replace(',', '.'))
+                                
+                                self.scraped_data.append({
+                                    "item": item_name,
+                                    "bulk_price": price_val,
+                                    "estimated_markup_potential": "15%", # Default estimate
+                                    "category": category.capitalize(),
+                                    "image_url": img_url
+                                })
+                                extracted_count += 1
+                                
+                            if extracted_count > 0:
+                                logger.info(f"[{self.supplier_name}] Successfully extracted {extracted_count} items from {category} page {page_num} via BS4.")
                             else:
-                                print(f"[{self.supplier_name}] No items extracted from {category} page {page_num}. Ending pagination for this category.")
+                                logger.info(f"[{self.supplier_name}] No items extracted from {category} page {page_num}. Ending pagination for this category.")
                                 break
                                 
                         except Exception as cat_e:
-                            print(f"[{self.supplier_name}] Failed to scrape {category} page {page_num}: {cat_e}")
+                            logger.error(f"[{self.supplier_name}] Failed to scrape {category} page {page_num}: {cat_e}", exc_info=True)
                             break
                         
                 browser.close()
             
         except Exception as e:
-            print(f"[{self.supplier_name}] Exception during scraping: {e}")
+            logger.error(f"[{self.supplier_name}] Exception during scraping: {e}", exc_info=True)

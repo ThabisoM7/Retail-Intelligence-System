@@ -30,7 +30,8 @@ async def recommend(request: RecommendRequest, api_key: str = Depends(get_api_ke
         budget=request.budget or 0.0,
         preferences=request.preferences,
         retail_data=combined_retail_data,
-        wholesale_data=wholesale_data
+        wholesale_data=wholesale_data,
+        vendor_inventory=request.vendor_inventory
     )
     
     # Build final response based on AI output

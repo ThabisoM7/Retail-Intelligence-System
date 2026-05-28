@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict, Any
 
 class Location(BaseModel):
     lat: float
@@ -13,6 +13,7 @@ class RecommendRequest(BaseModel):
     timeframe: Optional[str] = "next 2 weeks"
     location: Location
     preferences: List[str]
+    vendor_inventory: Optional[List[Dict[str, float]]] = None
 
 class OptimizedBasketItem(BaseModel):
     item_name: str
@@ -21,6 +22,7 @@ class OptimizedBasketItem(BaseModel):
     vendor_name: str
     price_zar: float
     deal_type: str
+    image_url: Optional[str] = None
 
 class SMESuggestedCombo(BaseModel):
     combo_name: str
@@ -28,6 +30,7 @@ class SMESuggestedCombo(BaseModel):
     suggested_selling_price_zar: float
     competitor_comparison: str
     rationale: str
+    image_url: Optional[str] = None
 
 class RecommendationResponse(BaseModel):
     status: str = "success"

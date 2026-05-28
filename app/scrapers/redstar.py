@@ -1,6 +1,9 @@
+import logging
 import requests
-from app.scrapers.base import BaseScraper
 import random
+from app.scrapers.base import BaseScraper
+
+logger = logging.getLogger(__name__)
 
 class RedStarScraper(BaseScraper):
     def __init__(self):
@@ -9,11 +12,8 @@ class RedStarScraper(BaseScraper):
         self.target_url = "https://redstarwholesale.co.za/collections/all/products.json?limit=250"
 
     def scrape(self):
-        print(f"[{self.supplier_name}] Starting extraction via Shopify JSON endpoint...")
+        logger.info(f"[{self.supplier_name}] Starting extraction via Shopify JSON endpoint...")
         try:
-            # We don't have the actual site access, but if it exists, it returns Shopify products array
-            # We will simulate a successful request or actually make one if it works.
-            # Using headers to look like a browser just in case
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
@@ -27,6 +27,9 @@ class RedStarScraper(BaseScraper):
                 for product in products:
                     title = product.get("title", "")
                     variants = product.get("variants", [])
+                    images = product.get("images", [])
+                    
+                    image_url = images[0].get("src") if images else None
                     
                     if variants:
                         # Grab the price of the first variant
@@ -43,11 +46,13 @@ class RedStarScraper(BaseScraper):
                             self.scraped_data.append({
                                 "item": title,
                                 "bulk_price": price,
-                                "estimated_markup_potential": markup
+                                "estimated_markup_potential": markup,
+                                "category": product.get("product_type", "Wholesale Staples"),
+                                "image_url": image_url
                             })
-                print(f"[{self.supplier_name}] Successfully parsed {len(self.scraped_data)} items from JSON.")
+                logger.info(f"[{self.supplier_name}] Successfully parsed {len(self.scraped_data)} items from JSON.")
             else:
-                print(f"[{self.supplier_name}] Failed to fetch data: HTTP {response.status_code}")
+                logger.error(f"[{self.supplier_name}] Failed to fetch data: HTTP {response.status_code}")
                 
         except Exception as e:
-            print(f"[{self.supplier_name}] Exception during scraping: {e}")
+            logger.error(f"[{self.supplier_name}] Exception during scraping: {e}", exc_info=True)

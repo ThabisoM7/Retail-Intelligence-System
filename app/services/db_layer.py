@@ -1,12 +1,16 @@
+import logging
 from supabase import create_client, Client
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 def get_supabase_client() -> Client:
     try:
         if settings.SUPABASE_URL and settings.SUPABASE_KEY:
             return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        logger.warning("Missing Supabase credentials in settings.")
     except Exception as e:
-        print(f"Error initializing Supabase client: {e}")
+        logger.error(f"Error initializing Supabase client: {e}", exc_info=True)
     return None
 
 def get_wholesale_prices(location: dict, preferences: list[str]) -> list[dict]:
@@ -15,22 +19,28 @@ def get_wholesale_prices(location: dict, preferences: list[str]) -> list[dict]:
     """
     supabase = get_supabase_client()
     if not supabase:
-        print("Fallback to mock wholesale data due to missing Supabase connection.")
-        return get_mock_wholesale()
+        if settings.MOCK_MODE:
+            logger.warning("Fallback to mock wholesale data due to missing Supabase connection.")
+            return get_mock_wholesale()
+        else:
+            raise Exception("Supabase connection failed and MOCK_MODE is False.")
     
     try:
-        # Fetching wholesale data via Supabase Python SDK
         response = supabase.table("wholesale_inventory").select("supplier, item, bulk_price, estimated_markup_potential").limit(20).execute()
         
         if response.data:
             return response.data
         else:
-            print("Supabase returned no data. Using fallback.")
-            return get_mock_wholesale()
+            if settings.MOCK_MODE:
+                logger.warning("Supabase returned no data. Using fallback.")
+                return get_mock_wholesale()
+            return []
             
     except Exception as e:
-        print(f"Error querying wholesale prices via Supabase: {e}")
-        return get_mock_wholesale()
+        logger.error(f"Error querying wholesale prices via Supabase: {e}", exc_info=True)
+        if settings.MOCK_MODE:
+            return get_mock_wholesale()
+        raise Exception(f"Database query failed: {e}")
 
 def get_mock_wholesale() -> list[dict]:
     return [
