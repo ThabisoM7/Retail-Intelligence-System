@@ -13,7 +13,7 @@ class RecommendRequest(BaseModel):
     timeframe: Optional[str] = "next 2 weeks"
     location: Location
     preferences: List[str]
-    vendor_inventory: Optional[List[Dict[str, float]]] = None
+    vendor_inventory: Optional[List[Dict[str, Any]]] = None
 
 class OptimizedBasketItem(BaseModel):
     item_name: str
