@@ -10,3 +10,4 @@ beautifulsoup4==4.12.3
 PyPDF2==3.0.1
 python-multipart==0.0.9
 duckduckgo-search==6.2.13
+httpx<0.28.0
