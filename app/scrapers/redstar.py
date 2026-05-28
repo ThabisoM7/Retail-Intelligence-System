@@ -48,18 +48,6 @@ class RedStarScraper(BaseScraper):
                 print(f"[{self.supplier_name}] Successfully parsed {len(self.scraped_data)} items from JSON.")
             else:
                 print(f"[{self.supplier_name}] Failed to fetch data: HTTP {response.status_code}")
-                # Fallback for testing
-                self._inject_mock_data()
                 
         except Exception as e:
             print(f"[{self.supplier_name}] Exception during scraping: {e}")
-            self._inject_mock_data()
-            
-    def _inject_mock_data(self):
-        print(f"[{self.supplier_name}] Injecting fallback mock data for demonstration.")
-        self.scraped_data = [
-            {"item": "Bokomo Corn Flakes 1kg (Case of 10)", "bulk_price": 450.00, "estimated_markup_potential": "25%"},
-            {"item": "White Sugar 12.5kg", "bulk_price": 210.00, "estimated_markup_potential": "15%"},
-            {"item": "Koo Baked Beans 410g (Shrink of 12)", "bulk_price": 135.00, "estimated_markup_potential": "28%"},
-            {"item": "All Gold Tomato Sauce 700ml (Box of 6)", "bulk_price": 180.00, "estimated_markup_potential": "20%"},
-        ]

@@ -1,13 +1,13 @@
 import json
 import google.generativeai as genai
 from app.core.config import settings
-
+from typing import List, Dict
 class RetailAIModel:
     def __init__(self):
         if settings.GEMINI_API_KEY:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            # Use gemini-1.5-flash as it's fast and supports JSON mode
-            self.model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
+            # Use gemini-3.5-flash as it's fast and supports JSON mode
+            self.model = genai.GenerativeModel('gemini-3.5-flash', generation_config={"response_mime_type": "application/json"})
         else:
             self.model = None
 
@@ -122,3 +122,115 @@ class RetailAIModel:
                 ]
             }
         return {}
+
+    def extract_products_from_html(self, raw_text: str, supplier: str) -> list[dict]:
+        """
+        Uses Gemini to extract a list of products and bulk prices directly from raw HTML or text.
+        """
+        if not self.model:
+            print("WARNING: GEMINI_API_KEY is not set. Returning empty extraction.")
+            return []
+            
+        system_prompt = (
+            f"You are an expert retail data extraction AI. Extract all wholesale products and their prices from the following text/HTML for {supplier}. "
+            "Return a strictly formatted JSON array of objects. "
+            "Each object MUST have the following keys:\n"
+            "1. 'item' (string name of the product)\n"
+            "2. 'bulk_price' (float, the price in ZAR)\n"
+            "3. 'estimated_markup_potential' (string, e.g. '15%')\n"
+            "4. 'category' (string, dynamically infer the product's category. For example: 'Food', 'Beverage', 'Utility', 'Toiletries', 'Staples', 'Snacks', etc.)\n"
+            "Ignore navigation links, footers, and non-product information."
+        )
+        
+        # To avoid massive token limits, we might truncate if it's absurdly large,
+        # but Gemini 1.5 Flash handles 1M tokens easily.
+        # We'll truncate to ~100,000 characters just to be safe for API costs.
+        truncated_text = raw_text[:100000]
+        
+        try:
+            response = self.model.generate_content(
+                f"{system_prompt}\n\nCONTENT TO EXTRACT:\n{truncated_text}"
+            )
+            
+            content = response.text
+            # If the model wraps it in markdown block, strip it
+            if content.startswith("```json"):
+                content = content.strip("`").replace("json\n", "", 1)
+            
+            parsed_json = json.loads(content)
+            
+            # Ensure it's a list
+            if isinstance(parsed_json, list):
+                return parsed_json
+            elif isinstance(parsed_json, dict) and "products" in parsed_json:
+                return parsed_json["products"]
+            return []
+            
+        except Exception as e:
+            print(f"AI Engine Exception during extraction for {supplier}: {e}")
+            return []
+
+    def extract_products_from_local_pdf(self, file_path: str, supplier: str, is_retail: bool) -> List[Dict]:
+        print(f"[{supplier}] Uploading local PDF {file_path} to Gemini for visual reasoning...")
+        try:
+            sample_file = genai.upload_file(path=file_path, display_name=f"{supplier} Specials")
+            
+            if is_retail:
+                # Retail Supermarket Schema
+                system_prompt = (
+                    f"You are an expert retail data extraction AI. Extract all products and their prices from the following PDF catalog for {supplier}. "
+                    "Return a strictly formatted JSON array of objects. "
+                    "Each object MUST have the following keys:\n"
+                    "1. 'item' (string name of the product)\n"
+                    "2. 'price' (float, the price in ZAR)\n"
+                    "3. 'category' (string, e.g. 'Food', 'Beverage', 'Utility', 'Toiletries', 'Staples')\n"
+                    "4. 'deal_expiry' (string, e.g. '2023-12-31' or 'Unknown' if not visible)\n"
+                    "5. 'loss_leader_flag' (boolean, set to true if it seems like a heavily discounted promotion designed to get people into the store)\n"
+                    "Ignore navigation links, footers, and non-product information. If you cannot find any products, return an empty array []."
+                )
+            else:
+                # Wholesale Schema
+                system_prompt = (
+                    f"You are an expert retail data extraction AI. Extract all wholesale products and their prices from the following PDF catalog for {supplier}. "
+                    "Return a strictly formatted JSON array of objects. "
+                    "Each object MUST have the following keys:\n"
+                    "1. 'item' (string name of the product)\n"
+                    "2. 'bulk_price' (float, the price in ZAR for the bulk pack)\n"
+                    "3. 'unit_price' (float, calculate the price per single unit if a bulk quantity is mentioned, otherwise same as bulk_price)\n"
+                    "4. 'bulk_quantity_savings' (string, e.g. 'Save R15 on a case of 6')\n"
+                    "5. 'category' (string, e.g. 'Food', 'Beverage', 'Utility', 'Toiletries', 'Staples')\n"
+                    "Ignore navigation links, footers, and non-product information. If you cannot find any products, return an empty array []."
+                )
+            
+            print(f"[{supplier}] Running visual extraction...")
+            response = self.model.generate_content([system_prompt, sample_file])
+            
+            # Clean up immediately
+            genai.delete_file(sample_file.name)
+            
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+                
+            data = json.loads(raw_text)
+            
+            if isinstance(data, list):
+                # Ensure all products have the required fields
+                for item in data:
+                    if 'category' not in item:
+                        item['category'] = "Uncategorized"
+                return data
+            return []
+            
+        except Exception as e:
+            print(f"AI Engine Exception during local PDF extraction for {supplier}: {e}")
+            try:
+                if 'sample_file' in locals():
+                    genai.delete_file(sample_file.name)
+            except:
+                pass
+            return []

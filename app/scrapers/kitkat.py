@@ -1,72 +1,61 @@
-import requests
-from bs4 import BeautifulSoup
-from app.scrapers.base import BaseScraper
 import time
-import random
-import re
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
+from app.scrapers.base import BaseScraper
 
 class KitKatScraper(BaseScraper):
     def __init__(self):
         super().__init__("Kit Kat Cash & Carry")
-        self.base_url = "https://kitkatgroup.com/Shop/Products"
-        self.categories = ["/staples", "/dairy", "/beverages"]
+        self.base_url = "https://www.kitkatgroup.com/shop/"
+        self.categories = ["groceries", "toiletries"]
 
     def scrape(self):
-        print(f"[{self.supplier_name}] Starting recursive extraction...")
-        
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        }
-        
+        print(f"[{self.supplier_name}] Starting extraction via Playwright + Gemini AI...")
         try:
-            # We don't have internet access to hit this specific site during hackathon tests usually, 
-            # so we'll simulate the delay and HTML traversal but fallback gracefully.
-            for category in self.categories:
-                # Simulate the 1.5-second execution delay to safely step through structures
-                time.sleep(1.5)
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
                 
-                url = f"{self.base_url}{category}?page=1"
-                try:
-                    response = requests.get(url, headers=headers, timeout=10)
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.text, 'html.parser')
+                # We will scrape up to 3 pages per category
+                for category in self.categories:
+                    for page_num in range(1, 4):
+                        url = f"{self.base_url}{category}?page={page_num}"
+                        print(f"[{self.supplier_name}] Navigating to {url}...")
                         
-                        # Looking for tiered promotions like "BUY 3 FOR R..."
-                        items = soup.find_all(class_=re.compile(r'product-item|grid-item', re.I))
-                        
-                        for item in items:
-                            title_elem = item.find(['h4', 'span'], class_=re.compile(r'name|title', re.I))
-                            title = title_elem.get_text(strip=True) if title_elem else ""
+                        try:
+                            page.goto(url, wait_until="networkidle", timeout=30000)
+                            page.wait_for_timeout(2000)
                             
-                            price_elem = item.find(string=re.compile(r'(?:R|ZAR)\s*\d+'))
-                            if title and price_elem:
-                                price_match = re.search(r'\d+(?:\.\d+)?', price_elem)
-                                if price_match:
-                                    price = float(price_match.group())
-                                    markup = f"{random.randint(15, 25)}%"
-                                    self.scraped_data.append({
-                                        "item": title,
-                                        "bulk_price": price,
-                                        "estimated_markup_potential": markup
-                                    })
-                except requests.RequestException:
-                    pass
+                            html_content = page.content()
+                            
+                            # Check if the page actually has products or if it's empty/out of bounds
+                            if "No products found" in html_content or "no-products" in html_content:
+                                print(f"[{self.supplier_name}] Reached end of category {category} at page {page_num}.")
+                                break
+                            
+                            # Strip out heavy scripts/styles
+                            soup = BeautifulSoup(html_content, "html.parser")
+                            for tag in soup(["script", "style", "nav", "footer", "svg"]):
+                                tag.decompose()
+                                
+                            clean_html = soup.get_text(separator=" ", strip=True)
+                            
+                            # Pass to Gemini
+                            ai_extracted_data = self.ai_engine.extract_products_from_html(clean_html, self.supplier_name)
+                            
+                            if ai_extracted_data:
+                                self.scraped_data.extend(ai_extracted_data)
+                                print(f"[{self.supplier_name}] Successfully extracted {len(ai_extracted_data)} items from {category} page {page_num} via AI.")
+                            else:
+                                print(f"[{self.supplier_name}] No items extracted from {category} page {page_num}. Ending pagination for this category.")
+                                break
+                                
+                        except Exception as cat_e:
+                            print(f"[{self.supplier_name}] Failed to scrape {category} page {page_num}: {cat_e}")
+                            break
+                        
+                browser.close()
             
-            if not self.scraped_data:
-                print(f"[{self.supplier_name}] Live traversal returned no data. Using mock.")
-                self._inject_mock_data()
-            else:
-                print(f"[{self.supplier_name}] Successfully parsed {len(self.scraped_data)} items.")
-
         except Exception as e:
             print(f"[{self.supplier_name}] Exception during scraping: {e}")
-            self._inject_mock_data()
-            
-    def _inject_mock_data(self):
-        print(f"[{self.supplier_name}] Injecting fallback mock data for demonstration.")
-        self.scraped_data = [
-            {"item": "Oros Original 5L (Case of 4)", "bulk_price": 180.00, "estimated_markup_potential": "25%"},
-            {"item": "Fattis & Monis Macaroni 3kg (Bale of 5)", "bulk_price": 280.00, "estimated_markup_potential": "30%"},
-            {"item": "Knorrox Soya Mince 400g (Pack of 10)", "bulk_price": 140.00, "estimated_markup_potential": "20%"},
-            {"item": "First Choice UHT Milk 1L (Case of 6)", "bulk_price": 95.00, "estimated_markup_potential": "18%"},
-        ]

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIS Admin - Intelligence Upload</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #0F172A;
+            --card-bg: #1E293B;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border: #334155;
+            --success: #10B981;
+            --error: #EF4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #818CF8, #C084FC);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #0F172A;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+
+        input[type="file"] {
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: var(--border);
+            color: var(--text-main);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background-color: #475569;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.875rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: var(--border);
+            cursor: not-allowed;
+            color: var(--text-muted);
+        }
+
+        .status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: none;
+            text-align: center;
+        }
+
+        .status.success {
+            display: block;
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status.error {
+            display: block;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .loader {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>RIS Leaflet Ingestion</h1>
+        <p class="subtitle">Upload leaflets to power the Thola VendorHub Engine.</p>
+
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="type">Data Target</label>
+                <select id="type" name="type" required>
+                    <option value="supermarket">Supermarket (Retail Intelligence)</option>
+                    <option value="wholesale">Wholesaler (Baseline Sourcing)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="supplier">Supplier / Retailer Name</label>
+                <select id="supplier" name="supplier" required>
+                    <optgroup label="Supermarkets">
+                        <option value="Shoprite">Shoprite</option>
+                        <option value="Spar">Spar</option>
+                        <option value="Pick n Pay">Pick n Pay</option>
+                        <option value="Checkers">Checkers</option>
+                        <option value="Boxer">Boxer</option>
+                    </optgroup>
+                    <optgroup label="Wholesalers">
+                        <option value="Kit Kat Cash & Carry">Kit Kat Cash & Carry</option>
+                        <option value="Devland Cash & Carry">Devland Cash & Carry</option>
+                        <option value="Big Save Cash & Carry">Big Save Cash & Carry</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="region">Region / Geo Validity</label>
+                <input type="text" id="region" name="region" value="National" required>
+            </div>
+
+            <div class="form-group">
+                <label for="file">Leaflet PDF</label>
+                <input type="file" id="file" name="file" accept=".pdf" required>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                <span id="btnText">Process via Gemini AI</span>
+                <div class="loader" id="loader"></div>
+            </button>
+        </form>
+
+        <div id="statusMessage" class="status"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const form = e.target;
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const loader = document.getElementById('loader');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            const formData = new FormData(form);
+            
+            // UI State: Loading
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+            statusMessage.className = 'status';
+            statusMessage.textContent = '';
+            
+            try {
+                const response = await fetch('/api/admin/upload-leaflet', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusMessage.className = 'status success';
+                    statusMessage.textContent = data.message;
+                    form.reset();
+                    // Reset defaults
+                    document.getElementById('region').value = 'National';
+                } else {
+                    statusMessage.className = 'status error';
+                    statusMessage.textContent = data.detail || 'An error occurred during extraction.';
+                }
+            } catch (error) {
+                statusMessage.className = 'status error';
+                statusMessage.textContent = 'Network error. Could not connect to the RIS API.';
+            } finally {
+                // UI State: Reset
+                submitBtn.disabled = false;
+                btnText.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

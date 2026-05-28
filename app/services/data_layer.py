@@ -4,25 +4,46 @@ def get_corporate_specials(location: dict) -> list[dict]:
     # 1. Get real supermarket locations nearby using Overpass API
     nearby_stores = get_nearby_supermarkets(location['lat'], location['lng'])
     
+    # 2. Fetch all retail specials from Supabase for this region
+    import requests
+    from app.core.config import settings
+    
     specials = []
-    # 2. Attach mock specials to these real locations based on brand
-    for store in nearby_stores:
-        brand = store.get("brand", "").lower()
-        store_name = store.get("name")
+    
+    if not settings.SUPABASE_URL:
+        print("Missing Supabase credentials, returning empty specials.")
+        return []
         
-        if "shoprite" in brand:
-            specials.append({"store": store_name, "item": "10kg Super Sun Maize Meal", "price": 135.00, "category": "Wholesale Staples", "type": "formal_retail"})
-            specials.append({"store": store_name, "item": "2L Sunflower Oil", "price": 45.99, "category": "Wholesale Staples", "type": "formal_retail"})
-        elif "pick n pay" in brand or "picknpay" in brand:
-            specials.append({"store": store_name, "item": "White Bread", "price": 16.99, "category": "Wholesale Staples", "type": "formal_retail"})
-            specials.append({"store": store_name, "item": "2L Milk", "price": 28.50, "category": "Dairy", "type": "formal_retail"})
-        elif "checkers" in brand:
-            specials.append({"store": store_name, "item": "Large Eggs 30 Pack", "price": 75.00, "category": "Fresh Produce", "type": "formal_retail"})
-            specials.append({"store": store_name, "item": "10kg Rice", "price": 145.00, "category": "Wholesale Staples", "type": "formal_retail"})
-        else:
-            # Generic
-            specials.append({"store": store_name, "item": "Mixed Vegetables 1kg", "price": 35.00, "category": "Fresh Produce", "type": "formal_retail"})
+    url = f"{settings.SUPABASE_URL}/rest/v1/retail_inventory?select=*"
+    headers = {
+        "apikey": settings.SUPABASE_KEY,
+        "Authorization": f"Bearer {settings.SUPABASE_KEY}"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            db_specials = response.json()
             
+            # 3. Attach real specials to the physical locations nearby
+            for store in nearby_stores:
+                brand = store.get("brand", "").lower()
+                store_name = store.get("name")
+                
+                # Find specials matching this brand
+                matching_specials = [s for s in db_specials if s.get("brand", "").lower() in brand or brand in s.get("brand", "").lower()]
+                
+                for s in matching_specials:
+                    specials.append({
+                        "store": store_name,
+                        "item": s.get("item", ""),
+                        "price": s.get("price", 0.0),
+                        "category": s.get("category", ""),
+                        "type": s.get("type", "formal_retail")
+                    })
+    except Exception as e:
+        print(f"Failed to query retail_inventory: {e}")
+        
     return specials
 
 def get_sme_inventory(location: dict) -> list[dict]:

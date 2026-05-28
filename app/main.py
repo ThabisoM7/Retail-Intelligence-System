@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api.routes import router as recommend_router
+from app.api.admin import router as admin_router
 
 app = FastAPI(
     title="Thola RIS Microservice",
@@ -21,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(recommend_router, prefix="/v1", tags=["Recommendations"])
+app.include_router(admin_router, prefix="/api", tags=["Admin"])
 
 # Mount static files for the Testing Web Dashboard
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
