@@ -54,6 +54,16 @@ async def upload_leaflet(
     records_to_insert = []
     for item in extracted_data:
         record = item.copy()
+        
+        # Sanitize numeric fields in case AI returns strings with currency symbols (e.g. "R10.99")
+        for price_field in ["price", "bulk_price", "unit_price"]:
+            if price_field in record and record[price_field] is not None:
+                try:
+                    price_str = str(record[price_field]).replace("R", "").replace(",", "").strip()
+                    record[price_field] = float(price_str)
+                except ValueError:
+                    record[price_field] = 0.0
+
         if is_retail:
             record["brand"] = supplier
             record["region"] = region
