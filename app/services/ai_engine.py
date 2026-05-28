@@ -81,6 +81,7 @@ class RetailAIModel:
                 "For Arbitrage: Set 'Suggested Selling Price' to 5% cheaper than the local Supermarket Price. "
                 "Calculate 'Assumed Profit' = Suggested Selling Price - Wholesale Cost. "
                 "Calculate 'Margin %' = (Assumed Profit / Suggested Selling Price) * 100. "
+                "IMPORTANT: The 'competitor_comparison' string must be punchy, sales-oriented, and strongly emphasize the profit margins (e.g., 'Shoprite sells for R150! Your cost is R110. You make a massive 21% margin!'). "
                 "Return a JSON object with 'suggested_combos' array. Each item must have: combo_name, included_items (array of strings), suggested_selling_price_zar, competitor_comparison, rationale, image_url."
             )
             data_context = f"Budget: R{budget}\nWholesale Data: {json.dumps(wholesale_data)}\nSupermarket Competitor Data: {json.dumps(retail_data)}\nVendor Actual Inventory: {json.dumps(vendor_inventory)}"
