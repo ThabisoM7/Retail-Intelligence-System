@@ -52,30 +52,54 @@ async def upload_leaflet(
     }
     
     records_to_insert = []
-    for item in extracted_data:
-        record = item.copy()
-        
-        # Sanitize numeric fields in case AI returns strings with currency symbols (e.g. "R10.99")
-        for price_field in ["price", "bulk_price", "unit_price"]:
-            if price_field in record and record[price_field] is not None:
-                try:
-                    price_str = str(record[price_field]).replace("R", "").replace(",", "").strip()
-                    record[price_field] = float(price_str)
-                except ValueError:
-                    record[price_field] = 0.0
+    
+    # Allowed columns based on the database schema
+    retail_allowed_keys = {"item", "price", "category", "deal_expiry", "loss_leader_flag", "brand", "region", "type", "image_url"}
+    wholesale_allowed_keys = {"supplier", "item", "bulk_price", "estimated_markup_potential", "image_url"}
 
+    for item in extracted_data:
+        # 1. Start with an empty record to avoid extra AI keys
+        record = {}
+        
+        # 2. Extract and Sanitize Fields
         if is_retail:
+            record["item"] = item.get("item", "Unknown Item")
+            record["category"] = item.get("category", "Uncategorized")
+            record["deal_expiry"] = item.get("deal_expiry", "Unknown")
+            record["loss_leader_flag"] = item.get("loss_leader_flag", False)
             record["brand"] = supplier
             record["region"] = region
             record["type"] = "formal_retail"
-            # Ensure fields map correctly to the new Retail schema
-            record["deal_expiry"] = record.get("deal_expiry", "Unknown")
-            record["loss_leader_flag"] = record.get("loss_leader_flag", False)
-        else:
-            record["supplier"] = supplier
-            record["unit_price"] = record.get("unit_price", record.get("bulk_price"))
-            record["bulk_quantity_savings"] = record.get("bulk_quantity_savings", "")
+            record["image_url"] = item.get("image_url")
             
+            # Price sanitization
+            raw_price = item.get("price")
+            try:
+                price_str = str(raw_price).replace("R", "").replace(",", "").strip()
+                record["price"] = float(price_str)
+            except (ValueError, TypeError):
+                record["price"] = 0.0
+                
+            # Filter strictly to retail keys
+            record = {k: v for k, v in record.items() if k in retail_allowed_keys}
+            
+        else:
+            record["item"] = item.get("item", "Unknown Item")
+            record["supplier"] = supplier
+            record["estimated_markup_potential"] = item.get("estimated_markup_potential", "0%")
+            record["image_url"] = item.get("image_url")
+            
+            # Bulk price sanitization
+            raw_bulk = item.get("bulk_price", item.get("unit_price"))
+            try:
+                price_str = str(raw_bulk).replace("R", "").replace(",", "").strip()
+                record["bulk_price"] = float(price_str)
+            except (ValueError, TypeError):
+                record["bulk_price"] = 0.0
+                
+            # Filter strictly to wholesale keys
+            record = {k: v for k, v in record.items() if k in wholesale_allowed_keys}
+
         records_to_insert.append(record)
         
     # Send to Supabase
