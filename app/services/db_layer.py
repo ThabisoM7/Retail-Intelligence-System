@@ -5,13 +5,15 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 def get_supabase_client() -> Client:
-    try:
-        if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+    if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+        try:
             return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        except Exception as e:
+            logger.error(f"Error initializing Supabase client: {e}", exc_info=True)
+            raise Exception(f"Supabase Client Creation Failed: {str(e)}")
+    else:
         logger.warning("Missing Supabase credentials in settings.")
-    except Exception as e:
-        logger.error(f"Error initializing Supabase client: {e}", exc_info=True)
-    return None
+        return None
 
 def get_wholesale_prices(location: dict, preferences: list[str]) -> list[dict]:
     """
