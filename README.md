@@ -2,13 +2,13 @@
 
 The Retail Intelligence System (RIS) is a modern, AI-powered backend microservice designed to harvest, process, store, and serve retail and wholesale intelligence. Developed as an API for the Thola Mobile application, it orchestrates web scraping, visual reasoning, geographic data aggregation, and AI-driven recommendations to help Small and Medium Enterprises (SMEs), particularly Spaza shop owners, make data-driven procurement and pricing decisions.
 
-## 🚀 What the System Does
+## What the System Does
 
 RIS operates in two primary phases:
 1. **Ingestion Pipeline**: Asynchronously scrapes wholesale e-commerce sites (via Playwright) and parses regional retail promotional leaflets (via PDFs). It leverages Google Gemini AI to visually reason and extract structured data (item, price, category, etc.) from unstructured HTML and PDFs, storing the intelligence in Supabase.
 2. **Serving Pipeline**: A Fast API backend that serves endpoints (e.g., `/v1/recommend`) which accept a user's location and budget. It queries local supermarket locations via the Overpass API (OpenStreetMap), cross-references this with the ingested corporate retail specials and wholesale prices, and uses Gemini AI to generate a curated procurement plan.
 
-## 🏛️ System Architecture
+## System Architecture
 
 The architecture decouples heavy asynchronous data ingestion from the fast user-facing API.
 
@@ -71,7 +71,7 @@ graph TD
     PDF -->|Save Data| DB_Retail
 ```
 
-## 📊 Data Flow Diagram (DFD)
+## Data Flow Diagram (DFD)
 
 This diagram illustrates how raw external data is transformed into structured intelligence and served as recommendations to the SME owner.
 
@@ -116,7 +116,7 @@ flowchart LR
     P5 -- Curated Procurement Plan --> E4
 ```
 
-## 🔄 State Diagram
+## State Diagram
 
 The system operates across two main state cycles: the background ingestion process and the synchronous API request lifecycle.
 
@@ -142,7 +142,7 @@ stateDiagram-v2
     }
 ```
 
-## ⏱️ Sequence Diagram
+## Sequence Diagram
 
 A typical sequence when the client application requests a tailored recommendation for an SME.
 
@@ -168,7 +168,7 @@ sequenceDiagram
     API-->>Client: 200 OK (Optimized Basket, Spend, Combos)
 ```
 
-## 📱 Integration with TholaMobile
+## Integration with TholaMobile
 
 The RIS API is built to seamlessly integrate with the **[TholaMobile App](https://github.com/ThabisoM7/TholaMobile/tree/dev)**. Integration strategies include:
 
@@ -177,13 +177,14 @@ The RIS API is built to seamlessly integrate with the **[TholaMobile App](https:
 3. **Competitor Alert System**: Using the local retail data pulled from RIS, TholaMobile can push notifications to SMEs when a nearby corporate supermarket (e.g., Shoprite, Spar) drops prices on staple items, suggesting a temporary price match or alternative stock focus.
 4. **Admin Upload Portal**: The RIS `/api/admin/upload-leaflet` endpoint can be integrated into an internal Thola administrative dashboard, allowing Thola staff to rapidly upload new wholesale and retail promotional PDFs for instant system updates.
 
-## 🌟 Capabilities & Recent Optimizations
+## Capabilities & Recent Optimizations
 
 ### Current Capabilities
 - **Geospatial Radar (5km)**: Uses Overpass API to identify actual competitor supermarkets (`SPAR`, `Pick n Pay`, `Boxer`, `Shoprite`, `Checkers`) strictly within a 5000-meter radius of the user's latitude and longitude.
 - **National Leaflet Logic**: A single promotional PDF (e.g., "SPAR specials") is intelligently applied to any physical store of that matching brand discovered nationwide, eliminating data duplication.
 - **Cost-Optimized Web Scraping**: Wholesale sites are scraped using zero-cost Python heuristics (BeautifulSoup and Regex) rather than AI token consumption, natively extracting prices and product images.
 - **DuckDuckGo Image AI**: For promotional PDFs that Gemini visually reads, the system runs a silent background search on DuckDuckGo to automatically grab relevant product pictures for the UI.
+-
 - **Multimodal AI Scraping**: Uses Gemini to visually read promotional PDFs without relying on fragile OCR or text extraction libraries.
 - **Stabilized MOCK_MODE**: For hackathon or local development without live databases, RIS cleanly falls back to generated mock responses if `MOCK_MODE` is enabled, preventing crashes.
 - **Tiered Intelligence**: Differentiates between standard users and premium SMEs by gating advanced wholesale insights.
